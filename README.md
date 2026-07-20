@@ -9,7 +9,7 @@ The Flask API loads the trained decision tree from `pred.pkl`, applies the same 
 - `GET /health` for a simple health check.
 - `POST /predict` with all mushroom feature values as JSON. The response contains `prediction` (`edible` or `poisonous`) and `confidence` when the model supports probabilities.
 
-### Run the API
+### Run the API locally
 
 ```bash
 cd backend
@@ -17,6 +17,20 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 python app.py
+```
+
+### Deploy the API
+
+The Flask application object is exported as `app` from `backend/app.py`, so production platforms should run it through a WSGI server instead of Flask debug mode. This repository includes a `Procfile` for platforms that read process definitions automatically:
+
+```Procfile
+web: gunicorn backend.app:app
+```
+
+For other platforms, use the same command after installing `backend/requirements.txt`:
+
+```bash
+gunicorn backend.app:app
 ```
 
 ## Frontend
