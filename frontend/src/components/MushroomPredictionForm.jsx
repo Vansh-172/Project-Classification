@@ -1,34 +1,26 @@
 import { useMemo, useState } from 'react';
 import { emptyMushroomValues, mushroomFeatures } from '../mushroomFeatures';
 
-const poisonousSignals = {
-  odor: new Set(['Creosote', 'Fishy', 'Foul', 'Musty', 'Pungent', 'Spicy']),
-  'spore-print-color': new Set(['Green', 'White']),
-  'gill-size': new Set(['Narrow']),
-  'stalk-surface-above-ring': new Set(['Silky']),
-  'stalk-surface-below-ring': new Set(['Silky']),
-  'ring-type': new Set(['Large', 'None']),
-};
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
 
-function predictMushroom(values) {
-  const score = Object.entries(poisonousSignals).reduce((total, [feature, riskyValues]) => {
-    return total + (riskyValues.has(values[feature]) ? 1 : 0);
-  }, 0);
-
-  const poisonous = score >= 2;
+function formatPrediction(apiResult) {
+  const label = apiResult.prediction === 'poisonous' ? 'Poisonous' : 'Edible';
+  const confidence = apiResult.confidence == null ? null : Math.round(apiResult.confidence * 100);
 
   return {
-    label: poisonous ? 'Poisonous' : 'Edible',
-    confidence: Math.min(96, 62 + score * 9),
-    message: poisonous
-      ? 'This mushroom contains multiple traits associated with poisonous samples. Avoid consumption.'
-      : 'The selected traits are closer to edible samples, but never eat wild mushrooms without expert verification.',
+    label,
+    confidence,
+    message: label === 'Poisonous'
+      ? 'The trained model classified this mushroom as poisonous. Avoid consumption.'
+      : 'The trained model classified this mushroom as edible, but never eat wild mushrooms without expert verification.',
   };
 }
 
 export default function MushroomPredictionForm({ onPrediction }) {
   const [values, setValues] = useState(emptyMushroomValues);
   const [submitted, setSubmitted] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [apiError, setApiError] = useState('');
 
   const missingFeatures = useMemo(
     () => mushroomFeatures.filter((feature) => !values[feature.name]),
@@ -40,21 +32,43 @@ export default function MushroomPredictionForm({ onPrediction }) {
     setValues((currentValues) => ({ ...currentValues, [name]: value }));
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
     setSubmitted(true);
+    setApiError('');
 
     if (missingFeatures.length > 0) {
       onPrediction(null);
       return;
     }
 
-    onPrediction(predictMushroom(values));
+    setIsLoading(true);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/predict`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(values),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Prediction request failed.');
+      }
+
+      onPrediction(formatPrediction(data));
+    } catch (error) {
+      onPrediction(null);
+      setApiError(error.message || 'Unable to reach the prediction API.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleReset = () => {
     setValues(emptyMushroomValues);
     setSubmitted(false);
+    setApiError('');
     onPrediction(null);
   };
 
@@ -71,6 +85,12 @@ export default function MushroomPredictionForm({ onPrediction }) {
       {submitted && missingFeatures.length > 0 && (
         <div className="validation-banner" role="alert">
           Please select all mushroom features before requesting a prediction.
+        </div>
+      )}
+
+      {apiError && (
+        <div className="validation-banner" role="alert">
+          {apiError}
         </div>
       )}
 
@@ -100,7 +120,9 @@ export default function MushroomPredictionForm({ onPrediction }) {
       </div>
 
       <div className="form-actions">
-        <button type="submit">Predict mushroom</button>
+        <button type="submit" disabled={isLoading}>
+          {isLoading ? 'Predicting…' : 'Predict mushroom'}
+        </button>
         <button className="button-secondary" type="button" onClick={handleReset}>Reset</button>
       </div>
     </form>

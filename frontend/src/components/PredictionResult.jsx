@@ -16,10 +16,14 @@ export default function PredictionResult({ result }) {
       <span className="result-eyebrow">Prediction result</span>
       <h2>{result.label}</h2>
       <p>{result.message}</p>
-      <div className="confidence-meter" aria-label={`Confidence ${result.confidence}%`}>
-        <span style={{ width: `${result.confidence}%` }} />
-      </div>
-      <strong>{result.confidence}% confidence</strong>
+      {result.confidence != null && (
+        <>
+          <div className="confidence-meter" aria-label={`Confidence ${result.confidence}%`}>
+            <span style={{ width: `${result.confidence}%` }} />
+          </div>
+          <strong>{result.confidence}% confidence</strong>
+        </>
+      )}
     </section>
   );
 }
