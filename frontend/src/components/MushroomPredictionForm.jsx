@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { emptyMushroomValues, mushroomFeatures } from '../mushroomFeatures';
+import { emptyMushroomValues, mushroomFeatures } from '../data/mushroomFeatures';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
 
@@ -110,7 +110,7 @@ export default function MushroomPredictionForm({ onPrediction }) {
               >
                 <option value="">Select {feature.label.toLowerCase()}</option>
                 {feature.options.map((option) => (
-                  <option key={option} value={option}>{option}</option>
+                  <option key={option.value} value={option.value}>{option.label}</option>
                 ))}
               </select>
               {hasError && <small>{feature.label} is required.</small>}
